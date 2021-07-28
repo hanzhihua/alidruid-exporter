@@ -7,19 +7,20 @@ import com.alibaba.druid.stat.JdbcStatManager;
 import io.prometheus.client.Collector;
 import io.prometheus.client.CounterMetricFamily;
 import io.prometheus.client.GaugeMetricFamily;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 import java.util.function.Function;
 
-public class DruidSqlCollector  extends Collector {
+@Slf4j
+public class DruidSqlCollector  extends AbstractDruidCollector {
 
     private static final List<String> LABEL_NAMES = Collections.singletonList("sql");
 
-    private DruidDataSource druidDataSource;
-
-    public DruidSqlCollector(DruidDataSource druidDataSource){
-        this.druidDataSource = druidDataSource;
+    public DruidSqlCollector(DruidDataSource druidDataSource) {
+        super(druidDataSource);
     }
+
 
     @Override
     public List<Collector.MetricFamilySamples> collect() {
@@ -31,47 +32,53 @@ public class DruidSqlCollector  extends Collector {
         List<Collector.MetricFamilySamples> samples = new ArrayList<>();
         for(final JdbcSqlStat jdbcSqlStat:jdbcSqlStatMap.values()){
             samples.add(
-                    createGauge("errorCount", "errorCount",jdbcSqlStat,
-                            stat -> (double) stat.getErrorCount())
+                    createGauge("druid_sql_error_count", "errorCount",jdbcSqlStat,
+                            jdbcSqlStat.getErrorCount())
                     );
             samples.add(
-                    createGauge("ConcurrentMax", "ConcurrentMax",jdbcSqlStat,
-                            stat -> (double) stat.getConcurrentMax())
+                    createGauge("druid_sql_concurrent_max", "ConcurrentMax",jdbcSqlStat,
+                            jdbcSqlStat.getConcurrentMax())
             );
             samples.add(
-                    createGauge("RunningCount", "RunningCount",jdbcSqlStat,
-                            stat -> (double) stat.getRunningCount())
+                    createGauge("druid_sql_running_count", "RunningCount",jdbcSqlStat,
+                            jdbcSqlStat.getRunningCount())
             );
             samples.add(
-                    createGauge("FetchRowCount", "FetchRowCount",jdbcSqlStat,
-                            stat -> (double) stat.getFetchRowCount())
+                    createGauge("druid_sql_fetch_rowcount", "FetchRowCount",jdbcSqlStat,
+                            jdbcSqlStat.getFetchRowCount())
             );
             samples.add(
-                    createGauge("UpdateCount", "UpdateCount",jdbcSqlStat,
-                            stat -> (double) stat.getUpdateCount())
+                    createGauge("druid_sql_update_count", "UpdateCount",jdbcSqlStat,
+                            jdbcSqlStat.getUpdateCount())
             );
 
             long[] histogramValues = jdbcSqlStat.getHistogramValues();
-            samples.add(
-                    createCounter("hi", "<100ms",jdbcSqlStat,
-                            stat -> (double) stat.getUpdateCount())
-            );
+            if(histogramValues.length == 8){
+                samples.add(
+                        createGauge("druid_sql_cost_morethan100ms", "cost > 100ms",jdbcSqlStat,
+                                histogramValues[3]));
+                samples.add(
+                        createGauge("druid_sql_cost_morethan1s", "cost > 1s",jdbcSqlStat,
+                                histogramValues[4]));
+                samples.add(
+                        createGauge("druid_sql_cost_morethan10s", "cost > 10s",jdbcSqlStat,
+                                histogramValues[5]));
+                samples.add(
+                        createGauge("druid_sql_cost_morethan100s", "cost > 100s",jdbcSqlStat,
+                                histogramValues[6]));
+                samples.add(
+                        createGauge("druid_sql_cost_morethan1000ms", "cost > 100s",jdbcSqlStat,
+                                histogramValues[7]));
+            }else{
+                log.warn("histogramValues length{} is invalid!",histogramValues.length);
+            }
         }
         return samples;
     }
 
 
-    private CounterMetricFamily createCounter(String metric, String help, JdbcSqlStat jdbcSqlStat,
-                                            Function<JdbcSqlStat, Double> metricValueFunction) {
-        CounterMetricFamily metricFamily = new CounterMetricFamily(metric, help, LABEL_NAMES);
-        metricFamily.addMetric(Arrays.asList(jdbcSqlStat.getSql()),metricValueFunction.apply(jdbcSqlStat));
-        return metricFamily;
-    }
-
-    private GaugeMetricFamily createGauge(String metric, String help, JdbcSqlStat jdbcSqlStat,
-                                            Function<JdbcSqlStat, Double> metricValueFunction) {
-        GaugeMetricFamily metricFamily = new GaugeMetricFamily(metric, help, LABEL_NAMES);
-        metricFamily.addMetric(Arrays.asList(jdbcSqlStat.getSql()),metricValueFunction.apply(jdbcSqlStat));
-        return metricFamily;
+    @Override
+    public List<String> getLabelNames() {
+        return LABEL_NAMES;
     }
 }
