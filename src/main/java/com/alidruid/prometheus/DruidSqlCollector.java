@@ -65,7 +65,7 @@ public class DruidSqlCollector  extends AbstractDruidCollector {
                         createGauge("druid_sql_cost_morethan100s", "druid sql cost > 100s",jdbcSqlStat,
                                 histogramValues[6]));
                 samples.add(
-                        createGauge("druid_sql_cost_morethan1000ms", "druid sql cost > 1000s",jdbcSqlStat,
+                        createGauge("druid_sql_cost_morethan1000s", "druid sql cost > 1000s",jdbcSqlStat,
                                 histogramValues[7]));
             }else{
                 log.warn("histogramValues length{} is invalid!",histogramValues.length);
