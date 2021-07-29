@@ -24,7 +24,8 @@ public class DruidCollectors {
             druidCollector.register(registry);
 
             DruidSqlCollector druidSqlCollector = new DruidSqlCollector(druidDataSource);
-            druidCollector.register(registry);
+            druidSqlCollector.register(registry);
+            log.warn("DruidCollectors success to init");
         }else{
             log.warn("DruidCollectors already init");
         }

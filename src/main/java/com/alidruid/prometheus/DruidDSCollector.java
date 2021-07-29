@@ -1,15 +1,10 @@
 package com.alidruid.prometheus;
 
 import com.alibaba.druid.pool.DruidDataSource;
-import com.alibaba.druid.stat.JdbcConnectionStat;
-import com.alibaba.druid.stat.JdbcStatManager;
-import io.prometheus.client.Collector;
-import io.prometheus.client.GaugeMetricFamily;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Function;
 
 public class DruidDSCollector extends AbstractDruidCollector {
 
@@ -19,7 +14,11 @@ public class DruidDSCollector extends AbstractDruidCollector {
         super(druidDataSource);
     }
 
-    public List<MetricFamilySamples> collect() {
+    public List<MetricFamilySamples> doCollect() {
+
+        if(druidDataSource == null || druidDataSource.isClosed() ){
+            return AbstractDruidCollector.EMPTY_LIST;
+        }
 
         return Arrays.asList(
                 createGauge("druid_ds_active_count", "Active count",druidDataSource,
